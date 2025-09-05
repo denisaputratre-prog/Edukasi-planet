@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astronomi Interaktif</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: radial-gradient(circle at center, #0d1b2a, #000);
+      color: white;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 20px 0;
+      text-shadow: 0 0 15px cyan;
+    }
+
+    button {
+      padding: 12px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 10px;
+      background: #1e90ff;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #4169e1;
+      transform: scale(1.05);
+    }
+
+    .section { display: none; }
+    .active { display: block; }
+
+    /* planet */
+    #planet-container {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 30px;
+    }
+    .planet {
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 0.8em;
+      box-shadow: 0 0 20px rgba(255,255,255,0.4);
+      cursor: pointer;
+      transition: transform 0.6s ease;
+    }
+    .planet.zoom { transform: scale(2.5); z-index: 5; }
+    #info {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 12px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+      display: none;
+    }
+    #info h2 { margin-top: 0; color: #ffd700; }
+
+    /* game meteor */
+    #meteor-game { position: relative; width: 100%; height: 400px; background: black; overflow: hidden; }
+    .meteor {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: radial-gradient(circle, orange, red);
+      border-radius: 50%;
+      top: -30px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- ===== MENU AWAL ===== -->
+  <div id="menu" class="section active">
+    <h1>🌌 Edukasi Astronomi 🌌</h1>
+    <button onclick="showSection('search')">Cari Planet</button>
+    <button onclick="showSection('game')">Main Game</button>
+  </div>
+
+  <!-- ===== CARI PLANET ===== -->
+  <div id="search" class="section">
+    <h1>🔎 Cari Planet</h1>
+    <input type="text" id="search-box" placeholder="Ketik nama planet...">
+    <div id="planet-container"></div>
+    <div id="info"></div>
+    <br>
+    <button onclick="showSection('menu')">⬅ Kembali</button>
+  </div>
+
+  <!-- ===== MAIN GAME ===== -->
+  <div id="game" class="section">
+    <h1>🎮 Pilih Mini Game</h1>
+    <button onclick="showSection('game-quiz')">Tebak Planet</button>
+    <button onclick="showSection('game-meteor')">Tangkap Meteor</button>
+    <br><br>
+    <button onclick="showSection('menu')">⬅ Kembali</button>
+  </div>
+
+  <!-- ===== GAME QUIZ ===== -->
+  <div id="game-quiz" class="section">
+    <h1>❓ Tebak Planet</h1>
+    <p id="question"></p>
+    <input type="text" id="answer" placeholder="Jawaban...">
+    <button onclick="checkAnswer()">Submit</button>
+    <p id="feedback"></p>
+    <br>
+    <button onclick="showSection('game')">⬅ Kembali</button>
+  </div>
+
+  <!-- ===== GAME METEOR ===== -->
+  <div id="game-meteor" class="section">
+    <h1>☄️ Tangkap Meteor</h1>
+    <div id="meteor-game"></div>
+    <p>Skor: <span id="score">0</span></p>
+    <br>
+    <button onclick="showSection('game')">⬅ Kembali</button>
+  </div>
+
+  <script>
+    // ===== GANTI UI =====
+    function showSection(id) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      if (id === "game-meteor") startMeteorGame();
+      if (id === "game-quiz") newQuestion();
+    }
+
+    // ===== DATA PLANET =====
+    const planets = [
+      { name: "Merkurius", size: 30, gradient: ["#555","#999"], info:"Planet terkecil dan terdekat dengan Matahari." },
+      { name: "Venus", size: 40, gradient: ["#f5d76e","#b8860b"], info:"Planet terpanas dengan atmosfer tebal CO₂." },
+      { name: "Bumi", size: 45, gradient: ["#1e90ff","#228b22"], info:"Satu-satunya planet dengan kehidupan." },
+      { name: "Mars", size: 38, gradient: ["#ff4500","#8b0000"], info:"Dikenal sebagai planet merah." },
+      { name: "Jupiter", size: 90, gradient: ["#d2691e","#8b4513"], info:"Planet terbesar dengan Bintik Merah." },
+      { name: "Saturnus", size: 75, gradient: ["#f0e68c","#bdb76b"], info:"Terkenal dengan cincin indahnya." },
+      { name: "Uranus", size: 60, gradient: ["#40e0d0","#2e8b57"], info:"Planet es raksasa dengan rotasi miring." },
+      { name: "Neptunus", size: 58, gradient: ["#0000cd","#4169e1"], info:"Planet terjauh dengan angin supersonik." }
+    ];
+
+    const container = document.getElementById("planet-container");
+    const infoBox = document.getElementById("info");
+    const searchBox = document.getElementById("search-box");
+
+    planets.forEach(p => {
+      const div = document.createElement("div");
+      div.className = "planet";
+      div.style.width = p.size+"px";
+      div.style.height = p.size+"px";
+      div.style.background = `radial-gradient(circle at 30% 30%, ${p.gradient[0]}, ${p.gradient[1]})`;
+      div.innerText = p.name[0];
+      div.addEventListener("click", () => zoomPlanet(div,p));
+      container.appendChild(div);
+      p.element = div;
+    });
+
+    function zoomPlanet(div,p) {
+      document.querySelectorAll(".planet").forEach(el => el.classList.remove("zoom"));
+      div.classList.add("zoom");
+      infoBox.style.display = "block";
+      infoBox.innerHTML = `<h2>${p.name}</h2><p>${p.info}</p>`;
+    }
+
+    searchBox.addEventListener("keyup", e=>{
+      const val = e.target.value.toLowerCase();
+      const found = planets.find(p => p.name.toLowerCase()===val);
+      if (found) zoomPlanet(found.element,found);
+    });
+
+    // ===== GAME QUIZ =====
+    const questions = [
+      {q:"Aku planet terbesar di tata surya. Siapakah aku?", a:"jupiter"},
+      {q:"Aku planet yang dikenal merah. Siapakah aku?", a:"mars"},
+      {q:"Aku planet dengan cincin indah. Siapakah aku?", a:"saturnus"},
+      {q:"Aku satu-satunya planet dengan kehidupan. Siapakah aku?", a:"bumi"}
+    ];
+    let currentQ;
+    function newQuestion(){
+      currentQ = questions[Math.floor(Math.random()*questions.length)];
+      document.getElementById("question").innerText = currentQ.q;
+      document.getElementById("feedback").innerText = "";
+      document.getElementById("answer").value="";
+    }
+    function checkAnswer(){
+      const ans = document.getElementById("answer").value.toLowerCase();
+      if(ans===currentQ.a){
+        document.getElementById("feedback").innerText = "✅ Benar!";
+      } else {
+        document.getElementById("feedback").innerText = "❌ Salah, coba lagi!";
+      }
+    }
+
+    // ===== GAME METEOR =====
+    let meteorInterval,score=0;
+    function startMeteorGame(){
+      score=0;
+      document.getElementById("score").innerText=score;
+      const area=document.getElementById("meteor-game");
+      area.innerHTML="";
+      clearInterval(meteorInterval);
+      meteorInterval=setInterval(()=>{
+        const m=document.createElement("div");
+        m.className="meteor";
+        m.style.left=Math.random()*(area.clientWidth-30)+"px";
+        area.appendChild(m);
+        let pos=0;
+        const fall=setInterval(()=>{
+          pos+=5;
+          m.style.top=pos+"px";
+          if(pos>area.clientHeight){
+            m.remove();
+            clearInterval(fall);
+          }
+        },50);
+        m.onclick=()=>{
+          score++;
+          document.getElementById("score").innerText=score;
+          m.remove();
+          clearInterval(fall);
+        }
+      },1000);
+    }
+  </script>
+</body>
+</html>
